@@ -2,7 +2,7 @@
 #Alejandra Paulina Perez Gonzalez - paulinapglz.99@gmail.com
 
 
-#Usar datos de gsaid_2023.txt
+#Usar datos de gsaid_2023.txt]
 
 #Mision: 
 #Analisis de variantes genomicas de SARS-CoV2. Las preguntas son:
@@ -20,7 +20,8 @@ library(pacman)
 p_load( 'tidyverse',   #data handling
         'ggplot2',     #plotting
         'vroom',       #lectura de datos
-        'stringr')    #data handling
+        'stringr',     #data handling
+        'rmarkdown')    #report
 
 
 #Lectura de datos
@@ -31,14 +32,18 @@ gsaid2023 <- vroom(file = 'https://raw.githubusercontent.com/INMEGEN/CienciaDeDa
 # La columna de "variante" tambien es una sola, por lo que hay que splitear las 
 #columnas para obterner la informacion necesaria
 
-#Nota: ECDC utilises three categories of variant classification to communicate 
-#increasing levels of concern about a new or emerging SARS-CoV-2 variant:
-#variant under monitoring (VUM), variant of interest (VOI) and variant of concern (VOC).
-
 gsaid2023 <- gsaid2023 %>% 
   mutate(anio = year(collection_date), 
          month = month(collection_date)) %>% #usar lubridate para crear la columna de anio y mes
          select(-collection_date) #eliminar col repetida
+
+#Para hacer el tidy tenemos dos opciones, 
+
+  ##Merequetengue con dplyr porque eldataset tiene un error en la columna
+#variant, y se corta en la parte de la string " first dete"
+
+#usando OPCION 1: separate_wider_delim
+
 
 gsaid2023 <- gsaid2023 %>% 
   separate_wider_delim(cols = variant,
@@ -51,6 +56,12 @@ gsaid2023$first_detected_in <- str_replace_all(string = gsaid2023$first_detected
                   pattern = "cted in ",
                   replace = "")
 
+#OPCION 2: usar strplit, tambien se debe eliminar el remanente con str_replace_all
+ 
+strsplit(gsaid2023$variant, split = " first dete")
+
+#respondiendo las preguntas
+
 #1)Que pais ha hecho mas secuenciacion de SARS en 2023?
 
 conteo_seq <- gsaid2023 %>% 
@@ -61,9 +72,17 @@ conteo_seq <- gsaid2023 %>%
 
 conteo_seq.p <- conteo_seq %>% 
   ggplot(aes(x = country,   #mi eje x sera 
-             y =  count)) +       #mi eje y sera
-  geom_col()
-
+             y =  count, 
+             fill = country)) +       #mi eje y sera
+  geom_col() + 
+  geom_label(aes(x = country,
+                 label = count)) +
+  labs(title="Conteo de secuenciacion de SARSCoV2", 
+       subtitle='durante 2023') + 
+  xlab("Pais") +
+  ylab("Secuenciaciones") +
+  theme_bw()
+  
 #vis del plot
 
 conteo_seq.p
@@ -82,19 +101,40 @@ conteo_seq_month <- gsaid2023 %>%
 conteo_seq_month.p <- conteo_seq_month %>% 
   ggplot(aes(x = month,   #mi eje x sera 
              y =  count)) +       #mi eje y sera
-  geom_col()
+  geom_point() + 
+  geom_line() +
+  geom_label(aes(label = count)) +
+  scale_x_continuous(breaks = seq(1, 8, by = 1)) + #para que aparezcan todos los meses
+  labs(title="Numero de secuenciaciones de SARSCoV2", 
+       subtitle='por mes durante 2023 para USA y MX segun GSAID', 
+      ) + 
+  xlab("Mes") +
+  ylab("Numero de secuenciaciones") +
+  theme_bw()
 
+#vis
 
-#3) Cual(es) es la variante(s) dominante(s) en cada mes por pais? este si va a estar mas perru
+conteo_seq_month.p
+
+#3) Cual(es) es la variante(s) dominante(s) en cada mes por pais?
 
 conteo_variante_month_country <- gsaid2023 %>% 
   group_by(month, type_of_variant, country) %>%     #los agrupamos y sumamos por pais y conteo
-  summarise(count = n())
+  summarise(count = n())  #cuenta 
 
 #ploteando
 
 conteo_variante_month_country.p <- conteo_variante_month_country %>% 
   ggplot(aes(x = month,   #mi eje x sera 
-             y =  count, 
-             fill = type_of_variant)) +       #mi eje y sera
-  geom_col()
+             y =  count, #mi eje y sera
+             fill = type_of_variant)) +   #llenar las columnas segun la variante
+  geom_col() +
+  theme_bw()
+
+#vis 
+
+conteo_variante_month_country.p
+
+#Nota: ECDC utilises three categories of variant classification to communicate 
+#increasing levels of concern about a new or emerging SARS-CoV-2 variant:
+#variant under monitoring (VUM), variant of interest (VOI) and variant of concern (VOC).
