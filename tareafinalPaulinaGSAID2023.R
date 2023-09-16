@@ -129,6 +129,11 @@ conteo_variante_month_country.p <- conteo_variante_month_country %>%
              y =  count, #mi eje y sera
              fill = type_of_variant)) +   #llenar las columnas segun la variante
   geom_col() +
+  scale_x_continuous(breaks = seq(1, 8, by = 1)) +
+  labs(title="Numero de secuenciaciones de SARSCoV2", 
+       subtitle='por mes durante 2023 para USA y MX segun GSAID') + 
+  xlab("Mes") +
+  ylab("Numero de secuenciaciones") +
   theme_bw()
 
 #vis 
