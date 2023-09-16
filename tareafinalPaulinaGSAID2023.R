@@ -20,9 +20,8 @@ library(pacman)
 p_load( 'tidyverse',   #data handling
         'ggplot2',     #plotting
         'vroom',       #lectura de datos
-        'stringr',     #data handling
-        'rmarkdown')    #report
-
+        'stringr')      #data handling
+        
 
 #Lectura de datos
 
@@ -47,7 +46,7 @@ gsaid2023 <- gsaid2023 %>%
 
 gsaid2023 <- gsaid2023 %>% 
   separate_wider_delim(cols = variant,
-                       delim = " first dete",  #el dataset tiene un error, asi que el delimitador debe de ser este y despues eliminar el string restante
+                       delim = " first dete",  #el delimitador debe de ser este y despues eliminar el string restante
                        names = c("type_of_variant", 
                                  "first_detected_in"))
 #eliminar el remanente
@@ -106,8 +105,7 @@ conteo_seq_month.p <- conteo_seq_month %>%
   geom_label(aes(label = count)) +
   scale_x_continuous(breaks = seq(1, 8, by = 1)) + #para que aparezcan todos los meses
   labs(title="Numero de secuenciaciones de SARSCoV2", 
-       subtitle='por mes durante 2023 para USA y MX segun GSAID', 
-      ) + 
+       subtitle='por mes durante 2023 para USA y MX segun GSAID') + 
   xlab("Mes") +
   ylab("Numero de secuenciaciones") +
   theme_bw()
