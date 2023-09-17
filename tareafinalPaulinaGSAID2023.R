@@ -19,7 +19,8 @@ setwd("~/tareas_RDataScience")
 library(pacman)
 p_load( 'tidyverse',   #data handling
         'ggplot2',     #plotting
-        'vroom',       #lectura de datos
+       'ggrepel',
+         'vroom',       #lectura de datos
         'stringr')      #data handling
         
 
@@ -116,27 +117,59 @@ conteo_seq_month.p
 
 #3) Cual(es) es la variante(s) dominante(s) en cada mes por pais?
 
-conteo_variante_month_country <- gsaid2023 %>% 
-  group_by(month, type_of_variant, country) %>%     #los agrupamos y sumamos por pais y conteo
-  summarise(count = n())  #cuenta 
+#Hago el conteo para USA
 
-#ploteando
+conteo_variante_month_USA <- gsaid2023 %>% 
+  filter(country == 'USA') %>% 
+  group_by(month, pango_lineage) %>%     #los agrupamos y sumamos por pais y conteo
+  summarise(count = n()) %>%  #cuenta 
+  arrange(by = month, count) #organice por pais, mes y conteo
+  
+#Hago el conteo para MX
 
-conteo_variante_month_country.p <- conteo_variante_month_country %>% 
+conteo_variante_month_MX <- gsaid2023 %>% 
+  filter(country == 'Mexico') %>% 
+  group_by(month, pango_lineage) %>%     #los agrupamos y sumamos por pais y conteo
+  summarise(count = n()) %>%  #cuenta 
+  arrange(by = month, count) #organice por pais, mes y conteo
+    
+#ploteando para mexico
+
+conteo_variante_month_mexico.p <- conteo_variante_month_MX %>% 
   ggplot(aes(x = month,   #mi eje x sera 
              y =  count, #mi eje y sera
-             fill = type_of_variant)) +   #llenar las columnas segun la variante
-  geom_col() +
-  scale_x_continuous(breaks = seq(1, 8, by = 1)) +
+             colour = pango_lineage)) +   #colorear las lineas segun la variante
+  geom_line(show.legend = FALSE) +
+  geom_label(aes(label=ifelse(pango_lineage == 'XBB.1.5',
+                             as.character(count), NA)), 
+             show.legend = FALSE) +
+  scale_x_continuous(breaks = seq(1, 8, by = 1)) + #para que aparezcan todos los meses
   labs(title="Numero de secuenciaciones de SARSCoV2", 
-       subtitle='por mes durante 2023 para USA y MX segun GSAID') + 
+       subtitle='por mes durante 2023 para MX segun GSAID') + 
   xlab("Mes") +
   ylab("Numero de secuenciaciones") +
   theme_bw()
 
 #vis 
 
-conteo_variante_month_country.p
+conteo_variante_month_mexico.p
+
+#ploteando para USA
+
+conteo_variante_month_USA %>% 
+  ggplot(aes(x = month,   #mi eje x sera 
+             y =  count, #mi eje y sera
+             colour = pango_lineage)) +   #colorear las lineas segun la variante
+  geom_line(show.legend = FALSE) +
+  geom_label(aes(label=ifelse(count == max(count),
+                              as.character(count), NA)), 
+             show.legend = FALSE) +
+  scale_x_continuous(breaks = seq(1, 8, by = 1)) + #para que aparezcan todos los meses
+  labs(title="Numero de secuenciaciones de SARSCoV2", 
+       subtitle='por mes durante 2023 para USA segun GSAID') + 
+  xlab("Mes") +
+  ylab("Numero de secuenciaciones") +
+  theme_bw()
 
 #Nota: ECDC utilises three categories of variant classification to communicate 
 #increasing levels of concern about a new or emerging SARS-CoV-2 variant:
