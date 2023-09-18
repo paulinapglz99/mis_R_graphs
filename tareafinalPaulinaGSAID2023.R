@@ -152,7 +152,8 @@ conteo_variante_month_mexico.p <- conteo_variante_month_MX %>%
              colour = pango_lineage)) +   #colorear las lineas segun la variante
   scale_shape_manual(values=good.shapes) +
    geom_line(show.legend = FALSE) +  #grafico de linea
-  geom_point(size = 5) +  #grafico de punto para dar estetica 
+  geom_point(size = 5, 
+             show.legend = FALSE) +  #grafico de punto para dar estetica 
   geom_label(aes(label=ifelse(count == max(count),
                               as.character(count), NA)), 
              show.legend = FALSE) +
@@ -177,7 +178,8 @@ conteo_variante_month_USA.p <- conteo_variante_month_USA %>%
              colour = pango_lineage)) +   #colorear las lineas segun la variante
   geom_line(show.legend = FALSE) +
   scale_shape_manual(values=good.shapes) +
-  geom_point(size = 5) +
+  geom_point(size = 5,
+             show.legend = FALSE) +
   geom_label(aes(label=ifelse(count == max(count),
                               as.character(count), NA)), 
              show.legend = FALSE) +
