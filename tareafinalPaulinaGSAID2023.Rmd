@@ -1,0 +1,359 @@
+---
+title: "Tarea final Curso Ciencia de Datos con R INMEGEN 2023"
+author: "Alejandra Paulina Perez Gonzalez, paulinapglz.99@gmail.com"
+date: "2023-09-16"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+Misión: 
+Análisis de los datos de secuenciación de variantes genómicas de SARS-CoV 2 de GISAID. Las preguntas son:
+
+### Librerias
+
+
+Utilizaré la librería _vroom_ para leer los datos de manera fácil,  _tidyverse_ y _stringr_ para el data handling y _ggplot2_ para graficar.
+
+
+```{r librerias}
+library(pacman)
+p_load( 'tidyverse',   #data handling
+        'ggplot2',     #plotting
+         'vroom',       #lectura de datos
+        'stringr',     #data handling
+       'viridis',     #colores 
+        'cowplot')    #para el plot_grid
+
+```
+
+### Lectura de datos
+
+Los datos se encuentran en el git de INMEGEN, por lo que podemos extraerlos directamente con el RAW
+
+```{r datos}
+
+gsaid2023 <- vroom(file = 'https://raw.githubusercontent.com/INMEGEN/CienciaDeDatosConR/master/data/ProyectoIntegrador/datos_gisaid_2023.txt')
+
+
+```
+
+### Data handling and tidy
+
+Antes de realizar cualquier analisis, hay que explorar y adecuar nusetro dataset. En este caso, vemos que la columna de fecha es una sola y nos gustaria tenerlo separado. De igual forma, la columna de "variante" tambien es una sola, por lo que hay que modificar y crear nuevas columnas para obterner la informacion necesaria
+
+En el caso de la fecha, podemos utilizar _lubridate_, asignando los meses y año
+
+```{r lubridate}
+
+gsaid2023 <- gsaid2023 %>% 
+  mutate(anio = year(collection_date), 
+         month = month(collection_date)) %>% #usar lubridate para crear la columna de anio y mes
+         select(-collection_date) #eliminar col repetida
+
+```
+
+
+El dataset tiene un error en la columna _variant_, y se corta en la parte de la string " first dete", para ello use la funcion separate_wider_delim() y elimine el remanente con _str_replace_all_
+
+```{r separate_wider_delim}
+
+gsaid2023 <- gsaid2023 %>% 
+  separate_wider_delim(cols = variant,
+                       delim = " first dete",  #el delimitador y despues eliminar el string restante
+                       names = c("type_of_variant", 
+                                 "first_detected_in"))
+
+#eliminar el remanente
+
+gsaid2023$first_detected_in <- str_replace_all(string = gsaid2023$first_detected_in,
+                  pattern = "cted in ",
+                  replace = "")
+
+```
+
+Antes de graficar, quiero hacer un conteo rapido de cuantas variables tipo _pangolin_ hay
+
+```{r lista_pangos}
+
+lista_pangos <- gsaid2023 %>% 
+  ungroup() %>% 
+  select(pango_lineage) %>% 
+  arrange(pango_lineage) %>% 
+  distinct()
+
+```
+
+En este dataset ay *486* variantes, de las cuales 2 son variantes no especificadas
+
+
+### Respondiendo las preguntas
+
+#### 1)¿Qué pais ha hecho mas secuenciacion de SARS en 2023?
+
+Hacemos un conteo con dplyr
+
+```{r conteo_de_secuenciacion}
+
+conteo_seq <- gsaid2023 %>% 
+  group_by(country) %>%     #los agrupamos y sumamos
+  summarise(count = n())
+
+```
+
+Graficamos con ggplot
+
+```{r plot_conteos_x_pais}
+
+conteo_seq.p <- conteo_seq %>% 
+  ggplot(aes(x = country,   #mi eje x sera 
+             y =  count, 
+             fill = country)) +       #mi eje y sera
+  geom_col() + 
+  geom_label(aes(x = country,
+                 label = count)) +
+  labs(title="Conteo de secuenciacion de SARSCoV2", 
+       subtitle='durante 2023') + 
+  xlab("Pais") +
+  ylab("Secuenciaciones") +
+  theme_bw()
+
+```
+
+Evidentemente, el pais que ha hecho mas secuenciacion de SARS-CoV2 en 2023 es USA
+
+```{r plot_conteos_x_pais.p, echo=FALSE}
+
+conteo_seq %>% 
+  ggplot(aes(x = country,   #mi eje x sera 
+             y =  count, 
+             fill = country)) +       #mi eje y sera
+  geom_col() + 
+  geom_label(aes(x = country,
+                 label = count)) +
+  labs(title="Conteo de secuenciacion de SARSCoV2", 
+       subtitle='durante 2023') + 
+  xlab("Pais") +
+  ylab("Secuenciaciones") +
+  theme_bw()
+
+```
+
+#### 2) ¿En qué mes se ha hecho mas secuenciacion?
+
+Hacemos un conteo con dplyr
+
+```{r conteo_por_mes}
+
+conteo_seq_month <- gsaid2023 %>% 
+  group_by(month) %>%     #los agrupamos y sumamos por pais y conteo
+  summarise(count = n())
+
+```
+
+Graficamos con ggplot para hacer una grafica de lineas que nos de el numero de conteos por mes.  
+
+```{r conteo_seq_month}
+
+conteo_seq_month.p <- conteo_seq_month %>% 
+  ggplot(aes(x = month,   #mi eje x sera 
+             y =  count)) +       #mi eje y sera
+  geom_line() +
+  geom_label(aes(label = count)) +
+  scale_x_continuous(breaks = seq(1, 8, by = 1)) + #para que aparezcan todos los meses
+  labs(title="Numero de secuenciaciones de SARSCoV2", 
+       subtitle='por mes durante 2023 para USA y MX segun GSAID') + 
+  xlab("Mes") +
+  ylab("Numero de secuenciaciones") +
+  theme_bw()
+
+```
+
+La grafica se veria como
+
+```{r conteo_seq_month.p, echo=FALSE}
+
+conteo_seq_month %>% 
+  ggplot(aes(x = month,   #mi eje x sera 
+             y =  count)) +       #mi eje y sera
+  geom_line() +
+  geom_label(aes(label = count)) +
+  scale_x_continuous(breaks = seq(1, 8, by = 1)) + #para que aparezcan todos los meses
+  labs(title="Numero de secuenciaciones de SARSCoV2", 
+       subtitle='por mes durante 2023 para USA y MX segun GSAID') + 
+  xlab("Mes") +
+  ylab("Numero de secuenciaciones") +
+  theme_bw()
+
+
+```
+
+
+#### 3) ¿Cual(es) es la variante(s) dominante(s) en cada mes por pais?
+
+Primero hacemos un conteo para cada pais.
+
+*conteo para MX*
+
+```{r conteo_MX}
+
+conteo_variante_month_MX <- gsaid2023 %>% 
+  filter(country == 'Mexico') %>% 
+  group_by(month, pango_lineage) %>%     #los agrupamos y sumamos por pais y conteo
+  summarise(count = n()) %>%  #cuenta 
+  arrange(by = month, count) #organice por pais, mes y conteo
+
+```
+
+*Conteo para USA*
+
+```{r conteo_USA}
+
+
+conteo_variante_month_USA <- gsaid2023 %>% 
+  filter(country == 'USA') %>% 
+  group_by(month, pango_lineage) %>%     #los agrupamos y sumamos por pais y conteo
+  summarise(count = n()) %>%  #cuenta 
+  arrange(by = month, count) %>% #organice por pais, mes y conteo
+filter(count > 107)  #numero arbitrario para disminuir la cantidad de datos
+
+
+```
+
+Antes de plotear, por curiosidad, quiero hacer un conteo rapido de cuantos de variables hay
+
+```{r tipos_de_variables_pangos}
+
+
+lista_pangos <- gsaid2023 %>% 
+  ungroup() %>% 
+  select(pango_lineage) %>% 
+  arrange(pango_lineage) %>% 
+  distinct()
+
+```
+
+Hay 486 variantes tipo pangolin, esto quiere decir que no podre asignar las suficientes formas para cada variante con la cantidad de shapes default, asi que asignare
+
+```{r good.shapes}
+
+
+good.shapes <- c(1:24, 32:127)
+
+```
+
+Graficando para Mexico
+
+```{r plolt_variante_month_MX}
+
+conteo_variante_month_mexico.p <- conteo_variante_month_MX %>% 
+  ggplot(aes(x = month,   #mi eje x sera 
+             y =  count, #mi eje y sera
+           shape = pango_lineage,
+             colour = pango_lineage)) +   #colorear las lineas segun la variante
+  scale_shape_manual(values=good.shapes) +
+   geom_line(show.legend = FALSE) +  #grafico de linea
+  geom_point(size = 5) +  #grafico de punto para dar estetica 
+  geom_label(aes(label=ifelse(count == max(count),
+                              as.character(count), NA)), 
+             show.legend = FALSE) +
+  scale_x_continuous(breaks = seq(1, 8, by = 1)) + #para que aparezcan todos los meses
+  labs(title="Numero de secuenciaciones de SARSCoV2",           #titulos
+       subtitle='por mes durante 2023 para MX segun GSAID') + 
+  xlab("Mes") +
+  ylab("Numero de secuenciaciones") +
+  theme(legend.title = element_text('Variantes pango_lineage')) +
+  theme_bw()
+
+```
+
+```{r plolt_variante_month_MX.p, echo=FALSE}
+
+conteo_variante_month_MX %>% 
+  ggplot(aes(x = month,   #mi eje x sera 
+             y =  count, #mi eje y sera
+           shape = pango_lineage,
+             colour = pango_lineage)) +   #colorear las lineas segun la variante
+  scale_shape_manual(values=good.shapes) +
+   geom_line(show.legend = FALSE) +  #grafico de linea
+  geom_point(size = 5) +  #grafico de punto para dar estetica 
+  geom_label(aes(label=ifelse(count == max(count),
+                              as.character(count), NA)), 
+             show.legend = FALSE) +
+  scale_x_continuous(breaks = seq(1, 8, by = 1)) + #para que aparezcan todos los meses
+  labs(title="Numero de secuenciaciones de SARSCoV2",           #titulos
+       subtitle='por mes durante 2023 para MX segun GSAID') + 
+  xlab("Mes") +
+  ylab("Numero de secuenciaciones") +
+  theme(legend.title = element_text('Variantes pango_lineage')) +
+  theme_bw()
+
+```
+
+*Graficando para USA*
+
+
+```{r conteo_variante_month_USA}
+
+conteo_variante_month_USA.p <- conteo_variante_month_USA %>% 
+  ggplot(aes(x = month,   #mi eje x sera 
+             y =  count, #mi eje y sera
+             shape = pango_lineage,
+             colour = pango_lineage)) +   #colorear las lineas segun la variante
+  geom_line(show.legend = FALSE) +
+  scale_shape_manual(values=good.shapes) +
+  geom_point(size = 5) +
+  geom_label(aes(label=ifelse(count == max(count),
+                              as.character(count), NA)), 
+             show.legend = FALSE) +
+  scale_x_continuous(breaks = seq(1, 8, by = 1)) + #para que aparezcan todos los meses
+  labs(title="Numero de secuenciaciones de SARSCoV2", 
+       subtitle='por mes durante 2023 para USA segun GSAID') + 
+  xlab("Mes") +
+  ylab("Numero de secuenciaciones") +
+  theme_bw()
+
+```
+
+
+```{r conteo_variante_month_USA.p, echo=FALSE}
+
+conteo_variante_month_USA %>% 
+  ggplot(aes(x = month,   #mi eje x sera 
+             y =  count, #mi eje y sera
+             shape = pango_lineage,
+             colour = pango_lineage)) +   #colorear las lineas segun la variante
+  geom_line(show.legend = FALSE) +
+  scale_shape_manual(values=good.shapes) +
+  geom_point(size = 5) +
+  geom_label(aes(label=ifelse(count == max(count),
+                              as.character(count), NA)), 
+             show.legend = FALSE) +
+  scale_x_continuous(breaks = seq(1, 8, by = 1)) + #para que aparezcan todos los meses
+  labs(title="Numero de secuenciaciones de SARSCoV2", 
+       subtitle='por mes durante 2023 para USA segun GSAID') + 
+  xlab("Mes") +
+  ylab("Numero de secuenciaciones") +
+  theme_bw()
+
+```
+Como se observa, la variante *Former VOC Omicron GRA (B.1.1.529+BA.** fue la mas secuenciada a principios de ano, junto con la variante *VOI GRA (XBB.1.5+XBB.1.5.*)* . Esta ultima ha estado presente de manera mas constante a lo largo del anio, desplazando incluso a _Former VOC Omicron GRA (B.1.1.529+BA.*)_.
+
+
+Finalmente, podemos juntar graficos
+
+```{r plot_grid}
+
+grid <- plot_grid(conteo_variante_month_mexico.p, conteo_variante_month_USA.p, 
+            labels = c('A', 'B'),
+            ncol = 1)
+```
+
+```{r plot_grid.p, echo=FALSE}
+
+plot_grid(conteo_variante_month_mexico.p, conteo_variante_month_USA.p, 
+            labels = c('A', 'B'),
+            ncol = 1)
+```
+
+Nota: El ECDC utiliza tres categorías de clasificación de variantes para comunicar los niveles crecientes de preocupación sobre una variante nueva o emergente del SRAS-CoV-2: variante en seguimiento (VUM), variante de interés (VOI) y variante preocupante (VOC).

@@ -19,10 +19,10 @@ setwd("~/tareas_RDataScience")
 library(pacman)
 p_load( 'tidyverse',   #data handling
         'ggplot2',     #plotting
-       'ggrepel',
          'vroom',       #lectura de datos
-        'stringr')      #data handling
-        
+        'stringr',     #data handling
+       'viridis',     #colores 
+        'cowplot')    #para el plot_grid
 
 #Lectura de datos
 
@@ -55,10 +55,6 @@ gsaid2023 <- gsaid2023 %>%
 gsaid2023$first_detected_in <- str_replace_all(string = gsaid2023$first_detected_in,
                   pattern = "cted in ",
                   replace = "")
-
-#OPCION 2: usar strplit, tambien se debe eliminar el remanente con str_replace_all
- 
-strsplit(gsaid2023$variant, split = " first dete")
 
 #respondiendo las preguntas
 
@@ -116,15 +112,9 @@ conteo_seq_month.p <- conteo_seq_month %>%
 conteo_seq_month.p
 
 #3) Cual(es) es la variante(s) dominante(s) en cada mes por pais?
-
-#Hago el conteo para USA
-
-conteo_variante_month_USA <- gsaid2023 %>% 
-  filter(country == 'USA') %>% 
-  group_by(month, pango_lineage) %>%     #los agrupamos y sumamos por pais y conteo
-  summarise(count = n()) %>%  #cuenta 
-  arrange(by = month, count) #organice por pais, mes y conteo
   
+good.shapes <- c(1:24, 32:127)
+
 #Hago el conteo para MX
 
 conteo_variante_month_MX <- gsaid2023 %>% 
@@ -133,21 +123,45 @@ conteo_variante_month_MX <- gsaid2023 %>%
   summarise(count = n()) %>%  #cuenta 
   arrange(by = month, count) #organice por pais, mes y conteo
     
+#Hago el conteo para USA. Aqui tenemos tantos datos que vamos a poner un threshold de >100
+
+conteo_variante_month_USA <- gsaid2023 %>% 
+  filter(country == 'USA') %>% 
+  group_by(month, pango_lineage) %>%     #los agrupamos y sumamos por pais y conteo
+  summarise(count = n()) %>%  #cuenta 
+  arrange(by = month, count) %>% #organice por pais, mes y conteo
+filter(count > 107)
+
+#antes de plotear, quiero hacer un conteo rapido de cuantos de variables hay
+
+lista_pangos <- gsaid2023 %>% 
+  ungroup() %>% 
+  select(pango_lineage) %>% 
+  arrange(pango_lineage) %>% 
+  distinct()
+
+#hay 486 , quiero asignar un tipo de glifo a cada tipo de variable para 
+
+
 #ploteando para mexico
 
 conteo_variante_month_mexico.p <- conteo_variante_month_MX %>% 
   ggplot(aes(x = month,   #mi eje x sera 
              y =  count, #mi eje y sera
+           shape = pango_lineage,
              colour = pango_lineage)) +   #colorear las lineas segun la variante
-  geom_line(show.legend = FALSE) +
-  geom_label(aes(label=ifelse(pango_lineage == 'XBB.1.5',
-                             as.character(count), NA)), 
+  scale_shape_manual(values=good.shapes) +
+   geom_line(show.legend = FALSE) +  #grafico de linea
+  geom_point(size = 5) +  #grafico de punto para dar estetica 
+  geom_label(aes(label=ifelse(count == max(count),
+                              as.character(count), NA)), 
              show.legend = FALSE) +
   scale_x_continuous(breaks = seq(1, 8, by = 1)) + #para que aparezcan todos los meses
-  labs(title="Numero de secuenciaciones de SARSCoV2", 
+  labs(title="Numero de secuenciaciones de SARSCoV2",           #titulos
        subtitle='por mes durante 2023 para MX segun GSAID') + 
   xlab("Mes") +
   ylab("Numero de secuenciaciones") +
+  theme(legend.title = element_text('Variantes pango_lineage')) +
   theme_bw()
 
 #vis 
@@ -156,11 +170,14 @@ conteo_variante_month_mexico.p
 
 #ploteando para USA
 
-conteo_variante_month_USA %>% 
+conteo_variante_month_USA.p <- conteo_variante_month_USA %>% 
   ggplot(aes(x = month,   #mi eje x sera 
              y =  count, #mi eje y sera
+             shape = pango_lineage,
              colour = pango_lineage)) +   #colorear las lineas segun la variante
   geom_line(show.legend = FALSE) +
+  scale_shape_manual(values=good.shapes) +
+  geom_point(size = 5) +
   geom_label(aes(label=ifelse(count == max(count),
                               as.character(count), NA)), 
              show.legend = FALSE) +
@@ -171,6 +188,12 @@ conteo_variante_month_USA %>%
   ylab("Numero de secuenciaciones") +
   theme_bw()
 
-#Nota: ECDC utilises three categories of variant classification to communicate 
-#increasing levels of concern about a new or emerging SARS-CoV-2 variant:
-#variant under monitoring (VUM), variant of interest (VOI) and variant of concern (VOC).
+#vis
+
+conteo_variante_month_USA.p
+
+#juntar graficos
+
+plot_grid(conteo_variante_month_mexico.p, conteo_variante_month_USA.p, 
+            labels = c('A', 'B'),
+            ncol = 1)
